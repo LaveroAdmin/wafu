@@ -1,0 +1,33 @@
+{
+    "name": "laveroadmin/wafu",
+    "description": "WAFU Firewall management extension for LaveroAdmin",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Aleksandr Kireev",
+            "email": "hello@bespredel.name",
+            "homepage": "https://bespredel.name"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "laveroadmin/laveroadmin": "*",
+        "bespredel/wafu": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "LaveroAdmin\\Admin\\Wafu\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "LaveroAdmin\\Admin\\Wafu\\WafuServiceProvider"
+            ],
+            "aliases": {
+                "WafuAdmin": "LaveroAdmin\\Admin\\Wafu\\Facades\\Wafu"
+            }
+        }
+    }
+}

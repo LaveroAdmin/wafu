@@ -1,0 +1,60 @@
+{
+    "name": "laveroadmin/wafu",
+    "title": {
+        "en": "WAFU Firewall",
+        "ru": "Фаервол WAFU"
+    },
+    "description": {
+        "en": "Web application firewall, attack filtering rules, IP blacklists, and security event logs.",
+        "ru": "Веб-фаервол, правила фильтрации атак, черные списки IP-адресов и аудит безопасности."
+    },
+    "category": "security",
+    "icon": "icon-shield-alt",
+    "version": "1.0.0",
+    "author": {
+        "name": "Aleksandr Kireev",
+        "email": "hello@bespredel.name",
+        "url": "https://bespredel.name"
+    },
+    "github": "https://github.com/LaveroAdmin/wafu",
+    "setup": {
+        "commands": [
+            {
+                "cmd": "php artisan admin:import wafu",
+                "desc": {
+                    "en": "Import firewall rule tables and admin menu",
+                    "ru": "Импорт таблиц правил фаервола и меню управления"
+                }
+            }
+        ],
+        "config": {
+            "file": "config/admin.php",
+            "code": "'wafu' => [\n    'enable' => true,\n],"
+        },
+        "requirements": {
+            "en": [
+                "PHP >= 8.1"
+            ],
+            "ru": [
+                "PHP >= 8.1"
+            ]
+        },
+        "notes": {
+            "en": [
+                "Attach \\LaveroAdmin\\Admin\\Wafu\\Middleware\\WafuMiddleware to your web route group or globally in bootstrap/app.php."
+            ],
+            "ru": [
+                "Подключите middleware \\LaveroAdmin\\Admin\\Wafu\\Middleware\\WafuMiddleware в группу маршрутов 'web' или глобально в bootstrap/app.php."
+            ]
+        }
+    },
+    "key": "wafu",
+    "compatibility": {
+        "php": ">=8.1",
+        "laravel": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "admin": "^1.0",
+        "extensions": [
+            "pdo"
+        ]
+    }
+}
