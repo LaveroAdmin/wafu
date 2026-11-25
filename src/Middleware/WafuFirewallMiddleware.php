@@ -40,10 +40,10 @@ class WafuFirewallMiddleware
                 reason: 'IP address is in blocklist',
                 statusCode: 403,
                 userAgent: $request->userAgent(),
-                payload: [
+                payload: WafuService::sanitizePayload([
                     'query' => $request->query->all(),
                     'body' => $request->request->all(),
-                ],
+                ]),
                 blocked: true
             );
 
@@ -78,8 +78,8 @@ class WafuFirewallMiddleware
 
             $result = $this->kernel->handleWithContext(
                 $request->server->all(),
-                $request->query->all(),
-                $request->request->all(),
+                WafuService::stripSensitiveForInspection($request->query->all()),
+                WafuService::stripSensitiveForInspection($request->request->all()),
                 $request->cookies->all(),
                 $headers,
                 $attributes,
