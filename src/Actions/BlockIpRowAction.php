@@ -9,6 +9,20 @@ use LaveroAdmin\Admin\Wafu\Models\WafuBlock;
 
 class BlockIpRowAction extends RowAction
 {
+    public function getIcon()
+    {
+        $ip = (string) ($this->row->ip ?? '');
+
+        return WafuBlock::isBlocked($ip)
+            ? '<i class="icon-unlock text-success"></i>'
+            : '<i class="icon-ban text-danger"></i>';
+    }
+
+    public function render()
+    {
+        return (string) preg_replace("/class='([^']*)'/", "class='$1 d-none d-md-inline-block'", parent::render(), 1);
+    }
+
     public function name()
     {
         $ip = (string) $this->row->ip;

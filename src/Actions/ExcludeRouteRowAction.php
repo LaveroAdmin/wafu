@@ -9,6 +9,13 @@ use LaveroAdmin\Admin\Wafu\Services\WafuService;
 
 class ExcludeRouteRowAction extends RowAction
 {
+    public $icon = 'icon-filter text-warning';
+
+    public function render()
+    {
+        return (string) preg_replace("/class='([^']*)'/", "class='$1 d-none d-md-inline-block'", parent::render(), 1);
+    }
+
     public function name()
     {
         return trans('lavero-admin-wafu::wafu.exclude_route');
