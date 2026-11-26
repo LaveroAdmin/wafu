@@ -13,7 +13,7 @@ class WhitelistIpRowAction extends RowAction
 
     public function render()
     {
-        return (string) preg_replace("/class='([^']*)'/", "class='$1 d-none d-md-inline-block'", parent::render(), 1);
+        return (string) preg_replace("/class='([^']*)'/", "class='$1 d-none d-md-inline-flex'", parent::render(), 1);
     }
 
     public function name()
