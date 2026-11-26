@@ -204,6 +204,19 @@ HTML;
 
     public function destroy(mixed $id)
     {
-        return WafuEvent::destroy($id);
+        $ids = array_values(array_filter(array_map('trim', explode(',', (string) $id)), fn ($v) => $v !== ''));
+        $deleted = !empty($ids) ? WafuEvent::whereIn('id', $ids)->delete() : 0;
+
+        if ($deleted > 0) {
+            return response()->json([
+                'status'  => true,
+                'message' => trans('admin.delete_succeeded'),
+            ]);
+        }
+
+        return response()->json([
+            'status'  => false,
+            'message' => trans('admin.delete_failed'),
+        ]);
     }
 }
