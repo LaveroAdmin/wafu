@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Cache;
 
 class WafuSetting extends Model
 {
+    public const CACHE_KEY = 'wafu_settings_all';
+
+    protected static ?array $memoryCache = null;
+
     protected $table = 'wafu_settings';
 
     protected $fillable = [
@@ -23,34 +27,66 @@ class WafuSetting extends Model
         $this->setTable(config('admin.extensions.wafu.settings_table', 'wafu_settings'));
     }
 
-    public static function get(string $key, mixed $default = null): mixed
+    /**
+     * Load all WAFU settings from memory/cache (cached forever until a setting changes).
+     */
+    public static function allCached(): array
     {
+        if (static::$memoryCache !== null) {
+            return static::$memoryCache;
+        }
+
         try {
-            return Cache::remember("wafu_setting_{$key}", 300, function () use ($key, $default) {
-                $record = static::where('key', $key)->first();
-                if ($record === null) {
-                    return $default;
+            $all = Cache::rememberForever(self::CACHE_KEY, function (): array {
+                $rows = static::query()->pluck('value', 'key');
+                $result = [];
+
+                foreach ($rows as $key => $rawValue) {
+                    $decoded = json_decode((string) $rawValue, true);
+                    $result[(string) $key] = json_last_error() === JSON_ERROR_NONE ? $decoded : $rawValue;
                 }
 
-                $decoded = json_decode((string) $record->value, true);
-                return json_last_error() === JSON_ERROR_NONE ? $decoded : $record->value;
+                return $result;
             });
+
+            static::$memoryCache = is_array($all) ? $all : [];
+
+            return static::$memoryCache;
         } catch (\Throwable) {
-            return $default;
+            return [];
         }
+    }
+
+    public static function get(string $key, mixed $default = null): mixed
+    {
+        $all = static::allCached();
+
+        return array_key_exists($key, $all) ? $all[$key] : $default;
     }
 
     public static function set(string $key, mixed $value): void
     {
-        $serialized = is_array($value) || is_object($value) ? json_encode($value) : (string) $value;
+        $serialized = (is_array($value) || is_object($value) || is_bool($value))
+            ? json_encode($value)
+            : (string) $value;
 
         static::updateOrCreate(
             ['key' => $key],
             ['value' => $serialized]
         );
 
+        static::flushCache($key);
+    }
+
+    public static function flushCache(?string $key = null): void
+    {
+        static::$memoryCache = null;
+
         try {
-            Cache::forget("wafu_setting_{$key}");
+            Cache::forget(self::CACHE_KEY);
+            if ($key !== null) {
+                Cache::forget("wafu_setting_{$key}");
+            }
         } catch (\Throwable) {
         }
     }
@@ -58,17 +94,11 @@ class WafuSetting extends Model
     protected static function booted(): void
     {
         static::saved(function ($model) {
-            try {
-                Cache::forget("wafu_setting_{$model->key}");
-            } catch (\Throwable) {
-            }
+            static::flushCache($model->key);
         });
 
         static::deleted(function ($model) {
-            try {
-                Cache::forget("wafu_setting_{$model->key}");
-            } catch (\Throwable) {
-            }
+            static::flushCache($model->key);
         });
     }
 }

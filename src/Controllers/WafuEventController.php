@@ -8,6 +8,8 @@ use LaveroAdmin\Admin\Grid;
 use LaveroAdmin\Admin\Layout\Content;
 use LaveroAdmin\Admin\Show;
 use LaveroAdmin\Admin\Wafu\Actions\BlockIpRowAction;
+use LaveroAdmin\Admin\Wafu\Actions\ExcludeRouteRowAction;
+use LaveroAdmin\Admin\Wafu\Actions\WhitelistIpRowAction;
 use LaveroAdmin\Admin\Wafu\Models\WafuBlock;
 use LaveroAdmin\Admin\Wafu\Models\WafuEvent;
 
@@ -83,6 +85,8 @@ class WafuEventController extends Controller
             $grid->actions(function (Grid\Displayers\Actions\Actions $actions) {
                 $actions->disableEdit();
                 $actions->add(new BlockIpRowAction());
+                $actions->add(new WhitelistIpRowAction());
+                $actions->add(new ExcludeRouteRowAction());
             });
 
             $grid->disableCreateButton();
@@ -123,6 +127,52 @@ class WafuEventController extends Controller
             $content->description(trans('lavero-admin-wafu::wafu.event') . " #{$id}");
 
             $event = WafuEvent::findOrFail($id);
+
+            $parsedPath = parse_url((string) $event->uri, PHP_URL_PATH);
+            $routePattern = is_string($parsedPath) && $parsedPath !== '' ? $parsedPath : '/';
+            $isBlocked = WafuBlock::isBlocked((string) $event->ip);
+            $csrf = csrf_token();
+            $ipEscaped = htmlspecialchars((string) $event->ip, ENT_QUOTES, 'UTF-8');
+            $routeEscaped = htmlspecialchars($routePattern, ENT_QUOTES, 'UTF-8');
+            $toggleUrl = route('wafu.ip.toggle');
+            $whitelistUrl = route('wafu.event.whitelist_ip');
+            $excludeUrl = route('wafu.event.exclude_route');
+
+            $blockLabel = $isBlocked ? trans('lavero-admin-wafu::wafu.unblock_ip') : trans('lavero-admin-wafu::wafu.block_ip');
+            $blockBtnClass = $isBlocked ? 'btn-outline-success' : 'btn-outline-danger';
+            $whitelistLabel = trans('lavero-admin-wafu::wafu.whitelist_ip');
+            $excludeLabel = trans('lavero-admin-wafu::wafu.exclude_route');
+
+            $quickActionsHtml = <<<HTML
+<div class="card mb-3">
+    <div class="card-body d-flex flex-wrap align-items-center gap-2 py-2 px-3">
+        <form action="{$toggleUrl}" method="POST" class="d-inline">
+            <input type="hidden" name="_token" value="{$csrf}">
+            <input type="hidden" name="ip" value="{$ipEscaped}">
+            <input type="hidden" name="reason" value="Toggled from WAF Event #{$id}">
+            <button type="submit" class="btn btn-sm {$blockBtnClass}">
+                <i class="icon-ban me-1"></i>{$blockLabel} ({$ipEscaped})
+            </button>
+        </form>
+        <form action="{$whitelistUrl}" method="POST" class="d-inline">
+            <input type="hidden" name="_token" value="{$csrf}">
+            <input type="hidden" name="ip" value="{$ipEscaped}">
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+                <i class="icon-check-circle me-1"></i>{$whitelistLabel} ({$ipEscaped})
+            </button>
+        </form>
+        <form action="{$excludeUrl}" method="POST" class="d-inline-flex align-items-center gap-1 ms-md-auto">
+            <input type="hidden" name="_token" value="{$csrf}">
+            <input type="text" name="route" value="{$routeEscaped}" class="form-control form-control-sm font-monospace" style="min-width: 220px;">
+            <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">
+                <i class="icon-filter me-1"></i>{$excludeLabel}
+            </button>
+        </form>
+    </div>
+</div>
+HTML;
+
+            $content->body($quickActionsHtml);
 
             $show = new Show($event);
             $show->field('id', __('admin.id'));

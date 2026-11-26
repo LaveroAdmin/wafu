@@ -28,6 +28,8 @@ return new class extends Migration {
                 $table->longText('payload')->nullable();
                 $table->boolean('blocked')->default(true)->index();
                 $table->timestamps();
+
+                $table->index('created_at');
             });
         }
 

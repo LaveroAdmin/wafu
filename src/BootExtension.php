@@ -22,6 +22,8 @@ trait BootExtension
             $router->get('wafu/settings', 'LaveroAdmin\Admin\Wafu\Controllers\WafuSettingsController@index')->name('wafu.settings');
             $router->post('wafu/settings', 'LaveroAdmin\Admin\Wafu\Controllers\WafuSettingsController@save')->name('wafu.settings.save');
             $router->post('wafu/ip/toggle', 'LaveroAdmin\Admin\Wafu\Controllers\WafuIpActionController@toggle')->name('wafu.ip.toggle');
+            $router->post('wafu/event/whitelist-ip', 'LaveroAdmin\Admin\Wafu\Controllers\WafuIpActionController@whitelistIp')->name('wafu.event.whitelist_ip');
+            $router->post('wafu/event/exclude-route', 'LaveroAdmin\Admin\Wafu\Controllers\WafuIpActionController@excludeRoute')->name('wafu.event.exclude_route');
         });
     }
 

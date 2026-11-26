@@ -8,6 +8,7 @@ use Illuminate\Routing\Controller;
 use LaveroAdmin\Admin\Facades\Admin;
 use LaveroAdmin\Admin\Layout\Content;
 use LaveroAdmin\Admin\Wafu\Models\WafuSetting;
+use LaveroAdmin\Admin\Wafu\Services\WafuService;
 use LaveroAdmin\Admin\Widgets\Box;
 
 class WafuSettingsController extends Controller
@@ -19,22 +20,58 @@ class WafuSettingsController extends Controller
             $content->description(trans('lavero-admin-wafu::wafu.settings_desc'));
 
             $settings = [
-                'enabled'                 => (bool)WafuSetting::get('enabled', config('wafu.enabled', true)),
-                'mode'                    => (string)WafuSetting::get('mode', config('wafu.mode', 'enforce')),
-                'trust_forwarded_headers' => (bool)WafuSetting::get('trust_forwarded_headers', config('wafu.trust_forwarded_headers', false)),
-                'trusted_proxies'         => (string)WafuSetting::get('trusted_proxies', implode("\n", (array)config('wafu.trusted_proxies', []))),
+                'enabled'                 => WafuService::isEnabled(),
+                'mode'                    => WafuService::getMode(),
+                'trust_forwarded_headers' => WafuService::toBool(WafuSetting::get('trust_forwarded_headers', config('wafu.trust_forwarded_headers', false))),
+                'trusted_proxies'         => (string) WafuSetting::get('trusted_proxies', implode("\n", (array) config('wafu.trusted_proxies', []))),
+                'whitelisted_ips'         => (string) WafuSetting::get('whitelisted_ips', ''),
+                'excluded_routes'         => (string) WafuSetting::get('excluded_routes', ''),
+                'ignored_fields'          => (string) WafuSetting::get('ignored_fields', implode(', ', (array) config('wafu.ignored_fields', []))),
+                'sensitive_fields'        => (string) WafuSetting::get('sensitive_fields', implode(', ', (array) config('wafu.sensitive_fields', []))),
 
                 // Modules
-                'mod_sql_injection'       => (bool)WafuSetting::get('mod_sql_injection', true),
-                'mod_xss'                 => (bool)WafuSetting::get('mod_xss', true),
-                'mod_rce'                 => (bool)WafuSetting::get('mod_rce', true),
-                'mod_lfi'                 => (bool)WafuSetting::get('mod_lfi', true),
-                'mod_path_traversal'      => (bool)WafuSetting::get('mod_path_traversal', true),
-                'mod_bad_bots'            => (bool)WafuSetting::get('mod_bad_bots', true),
-                'mod_rate_limit'          => (bool)WafuSetting::get('mod_rate_limit', true),
-                'mod_not_found_abuse'     => (bool)WafuSetting::get('mod_not_found_abuse', true),
-                'mod_ip_blocklist'        => (bool)WafuSetting::get('mod_ip_blocklist', true),
+                'mod_sql_injection'       => WafuService::isModuleEnabled('sql_injection'),
+                'mod_xss'                 => WafuService::isModuleEnabled('xss'),
+                'mod_rce'                 => WafuService::isModuleEnabled('rce'),
+                'mod_lfi'                 => WafuService::isModuleEnabled('lfi'),
+                'mod_path_traversal'      => WafuService::isModuleEnabled('path_traversal'),
+                'mod_bad_bots'            => WafuService::isModuleEnabled('bad_bots'),
+                'mod_rate_limit'          => WafuService::isModuleEnabled('rate_limit'),
+                'mod_not_found_abuse'     => WafuService::isModuleEnabled('not_found_abuse'),
+                'mod_ip_blocklist'        => WafuService::isModuleEnabled('ip_blocklist'),
+
+                // Rate limit & 404 abuse rules
+                'rate_limit_limit'        => (int) WafuSetting::get('rate_limit_limit', config('wafu.modules.rate_limit.limit', 120)),
+                'rate_limit_interval'     => (int) WafuSetting::get('rate_limit_interval', config('wafu.modules.rate_limit.interval', 60)),
+                'rate_limit_key_by'       => (string) WafuSetting::get('rate_limit_key_by', config('wafu.modules.rate_limit.key_by', 'ip')),
+                'rate_limit_action'       => (string) WafuSetting::get('rate_limit_action', config('wafu.modules.rate_limit.on_exceed', 'challenge')),
+
+                'not_found_threshold'     => (int) WafuSetting::get('not_found_threshold', config('wafu.modules.not_found_abuse.threshold', 20)),
+                'not_found_interval'      => (int) WafuSetting::get('not_found_interval', config('wafu.modules.not_found_abuse.interval', 300)),
+                'not_found_key_by'        => (string) WafuSetting::get('not_found_key_by', config('wafu.modules.not_found_abuse.key_by', 'ip')),
+                'not_found_action'        => (string) WafuSetting::get('not_found_action', config('wafu.modules.not_found_abuse.on_exceed', 'block')),
             ];
+
+            $moduleDefaults = [
+                'sql_injection'  => ['action' => 'block', 'targets' => ['query', 'body', 'cookies']],
+                'xss'            => ['action' => 'block', 'targets' => ['query', 'body', 'cookies']],
+                'rce'            => ['action' => 'block', 'targets' => ['query', 'body', 'cookies', 'uri']],
+                'lfi'            => ['action' => 'block', 'targets' => ['query', 'body', 'cookies', 'uri']],
+                'path_traversal' => ['action' => 'block', 'targets' => ['uri', 'query', 'body', 'cookies']],
+                'bad_bots'       => ['action' => 'challenge', 'targets' => []],
+            ];
+
+            foreach ($moduleDefaults as $mod => $def) {
+                $settings["mod_{$mod}_action"] = (string) WafuSetting::get(
+                    "mod_{$mod}_action",
+                    config("wafu.modules.{$mod}.on_match", $def['action'])
+                );
+                $settings["mod_{$mod}_targets"] = (array) WafuSetting::get(
+                    "mod_{$mod}_targets",
+                    config("wafu.modules.{$mod}.targets", $def['targets'])
+                );
+                $settings["mod_{$mod}_custom_patterns"] = (string) WafuSetting::get("mod_{$mod}_custom_patterns", '');
+            }
 
             $ruleset = $this->loadRuleset();
             $modulesData = $this->buildModulesData($ruleset, $settings);
@@ -233,10 +270,10 @@ class WafuSettingsController extends Controller
                 'enabled'       => !empty($settings['mod_rate_limit']),
                 'patterns'      => [
                     'Algorithm: Sliding Window Counter',
-                    'Threshold: maximum 120 requests per 60 seconds interval',
-                    'Retry-After header: 15 seconds delay before retry',
+                    "Threshold: maximum {$settings['rate_limit_limit']} requests per {$settings['rate_limit_interval']} seconds interval",
+                    "Group by: {$settings['rate_limit_key_by']} | Action: {$settings['rate_limit_action']}",
                 ],
-                'pattern_count' => '120 req / 60s',
+                'pattern_count' => "{$settings['rate_limit_limit']} req / {$settings['rate_limit_interval']}s",
                 'examples'      => [
                     'Automated mitigation of DDoS and DoS attacks',
                     'Brute-force protection on authentication endpoints',
@@ -254,11 +291,11 @@ class WafuSettingsController extends Controller
                 'targets'       => ['HTTP 404 Response Count per Client IP'],
                 'enabled'       => !empty($settings['mod_not_found_abuse']),
                 'patterns'      => [
-                    'Error threshold: more than 20 404 Not Found responses',
-                    'Time interval: 300 seconds (5 minutes)',
-                    'When exceeded: IP is automatically blocked for aggressive scanning',
+                    "Error threshold: more than {$settings['not_found_threshold']} 404 Not Found responses",
+                    "Time interval: {$settings['not_found_interval']} seconds",
+                    "Group by: {$settings['not_found_key_by']} | Action: {$settings['not_found_action']}",
                 ],
-                'pattern_count' => '>20 404 / 5min',
+                'pattern_count' => ">{$settings['not_found_threshold']} 404 / {$settings['not_found_interval']}s",
                 'examples'      => [
                     'Scanning for hidden admin panels: /admin.php, /wp-login.php',
                     'Scanning for archive and database dumps: /backup.zip, /dump.sql, /.git',
@@ -273,7 +310,11 @@ class WafuSettingsController extends Controller
         WafuSetting::set('enabled', $request->has('enabled'));
         WafuSetting::set('mode', $request->input('mode', 'enforce') === 'report' ? 'report' : 'enforce');
         WafuSetting::set('trust_forwarded_headers', $request->has('trust_forwarded_headers'));
-        WafuSetting::set('trusted_proxies', (string)$request->input('trusted_proxies', ''));
+        WafuSetting::set('trusted_proxies', (string) $request->input('trusted_proxies', ''));
+        WafuSetting::set('whitelisted_ips', (string) $request->input('whitelisted_ips', ''));
+        WafuSetting::set('excluded_routes', (string) $request->input('excluded_routes', ''));
+        WafuSetting::set('ignored_fields', (string) $request->input('ignored_fields', ''));
+        WafuSetting::set('sensitive_fields', (string) $request->input('sensitive_fields', ''));
 
         $modules = [
             'mod_sql_injection',
@@ -290,6 +331,38 @@ class WafuSettingsController extends Controller
         foreach ($modules as $mod) {
             WafuSetting::set($mod, $request->has($mod));
         }
+
+        $validActions = ['block', 'challenge', 'log'];
+        $validTargets = ['query', 'body', 'cookies', 'uri', 'headers'];
+
+        foreach (['sql_injection', 'xss', 'rce', 'lfi', 'path_traversal', 'bad_bots'] as $mod) {
+            $action = (string) $request->input("mod_{$mod}_action", 'block');
+            WafuSetting::set("mod_{$mod}_action", in_array($action, $validActions, true) ? $action : 'block');
+
+            if ($mod !== 'bad_bots') {
+                $targets = array_values(array_intersect(
+                    (array) $request->input("mod_{$mod}_targets", []),
+                    $validTargets
+                ));
+                WafuSetting::set("mod_{$mod}_targets", $targets);
+            }
+
+            WafuSetting::set("mod_{$mod}_custom_patterns", (string) $request->input("mod_{$mod}_custom_patterns", ''));
+        }
+
+        WafuSetting::set('rate_limit_limit', max(1, (int) $request->input('rate_limit_limit', 120)));
+        WafuSetting::set('rate_limit_interval', max(1, (int) $request->input('rate_limit_interval', 60)));
+        $rlKeyBy = (string) $request->input('rate_limit_key_by', 'ip');
+        WafuSetting::set('rate_limit_key_by', in_array($rlKeyBy, ['ip', 'ip+uri'], true) ? $rlKeyBy : 'ip');
+        $rlAction = (string) $request->input('rate_limit_action', 'challenge');
+        WafuSetting::set('rate_limit_action', in_array($rlAction, $validActions, true) ? $rlAction : 'challenge');
+
+        WafuSetting::set('not_found_threshold', max(1, (int) $request->input('not_found_threshold', 20)));
+        WafuSetting::set('not_found_interval', max(1, (int) $request->input('not_found_interval', 300)));
+        $nfKeyBy = (string) $request->input('not_found_key_by', 'ip');
+        WafuSetting::set('not_found_key_by', in_array($nfKeyBy, ['ip', 'ip+uri'], true) ? $nfKeyBy : 'ip');
+        $nfAction = (string) $request->input('not_found_action', 'block');
+        WafuSetting::set('not_found_action', in_array($nfAction, $validActions, true) ? $nfAction : 'block');
 
         admin_toastr(trans('lavero-admin-wafu::wafu.saved_successfully'), 'success');
 

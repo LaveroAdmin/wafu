@@ -10,7 +10,7 @@
     },
     "category": "security",
     "icon": "icon-shield-alt",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "author": {
         "name": "Aleksandr Kireev",
         "email": "hello@bespredel.name",
@@ -20,31 +20,51 @@
     "setup": {
         "commands": [
             {
+                "cmd": "php artisan migrate",
+                "desc": {
+                    "en": "Create WAFU events, blocks, and settings tables",
+                    "ru": "Создание таблиц событий, блокировок и настроек WAFU"
+                }
+            },
+            {
+                "cmd": "php artisan vendor:publish --tag=wafu-config",
+                "desc": {
+                    "en": "Publish base WAFU firewall config (config/wafu.php)",
+                    "ru": "Публикация базового конфига фаервола (config/wafu.php)"
+                }
+            },
+            {
                 "cmd": "php artisan admin:import wafu",
                 "desc": {
-                    "en": "Import firewall rule tables and admin menu",
-                    "ru": "Импорт таблиц правил фаервола и меню управления"
+                    "en": "Import firewall menu items and permissions",
+                    "ru": "Импорт пунктов меню и прав доступа фаервола"
                 }
             }
         ],
         "config": {
-            "file": "config/admin.php",
-            "code": "'wafu' => [\n    'enable' => true,\n],"
+            "file": "bootstrap/app.php",
+            "code": "->withMiddleware(function (Middleware $middleware) {\n    $middleware->web(append: [\n        \\LaveroAdmin\\Admin\\Wafu\\Middleware\\WafuFirewallMiddleware::class,\n    ]);\n})"
         },
         "requirements": {
             "en": [
-                "PHP >= 8.1"
+                "PHP >= 8.1",
+                "bespredel/wafu"
             ],
             "ru": [
-                "PHP >= 8.1"
+                "PHP >= 8.1",
+                "bespredel/wafu"
             ]
         },
         "notes": {
             "en": [
-                "Attach \\LaveroAdmin\\Admin\\Wafu\\Middleware\\WafuMiddleware to your web route group or globally in bootstrap/app.php."
+                "Attach \\LaveroAdmin\\Admin\\Wafu\\Middleware\\WafuFirewallMiddleware (or alias 'wafu.firewall') to your web middleware group in bootstrap/app.php.",
+                "Password fields and CSRF tokens are automatically excluded from WAF inspection and redacted as [REDACTED] in event logs.",
+                "All WAF settings, IP whitelists, route exclusions, and module rules are managed from Admin -> WAF Firewall -> WAF Settings and cached until changed."
             ],
             "ru": [
-                "Подключите middleware \\LaveroAdmin\\Admin\\Wafu\\Middleware\\WafuMiddleware в группу маршрутов 'web' или глобально в bootstrap/app.php."
+                "Подключите middleware \\LaveroAdmin\\Admin\\Wafu\\Middleware\\WafuFirewallMiddleware (или алиас 'wafu.firewall') в группу 'web' в bootstrap/app.php.",
+                "Поля паролей и CSRF-токены автоматически исключаются из проверки WAF и маскируются как [REDACTED] в журнале событий.",
+                "Все настройки WAF, белые списки IP, исключения маршрутов и правила модулей управляются из админки (WAF Фаервол -> Настройки WAF) и кэшируются до изменения."
             ]
         }
     },

@@ -29,31 +29,45 @@ class WafuFirewallMiddleware
 
         $clientIp = (string) $request->ip();
 
+        if (WafuService::isIpWhitelisted($clientIp) || WafuService::isRouteExcluded($request)) {
+            return $next($request);
+        }
+
         // 1. Fast cached check: is client IP blocked? (Zero DB overhead)
-        if (WafuBlock::isBlocked($clientIp)) {
+        if (WafuService::isModuleEnabled('ip_blocklist') && WafuBlock::isBlocked($clientIp)) {
+            $isReportMode = WafuService::getMode() === 'report';
+
             WafuService::logEvent(
                 ip: $clientIp,
                 method: $request->method(),
                 uri: $request->fullUrl(),
                 module: 'ip_blocklist',
-                action: 'block',
+                action: $isReportMode ? 'report' : 'block',
                 reason: 'IP address is in blocklist',
-                statusCode: 403,
+                statusCode: $isReportMode ? 200 : 403,
                 userAgent: $request->userAgent(),
                 payload: WafuService::sanitizePayload([
                     'query' => $request->query->all(),
                     'body' => $request->request->all(),
                 ]),
-                blocked: true
+                blocked: !$isReportMode
             );
 
-            return response('Access Denied: Your IP address is blocked by security policy.', 403, [
-                'Content-Type' => 'text/plain; charset=utf-8',
-            ]);
+            if (!$isReportMode) {
+                return response('Access Denied: Your IP address is blocked by security policy.', 403, [
+                    'Content-Type' => 'text/plain; charset=utf-8',
+                ]);
+            }
         }
 
         // 2. Run WAFU Kernel inspection if available
-        if ($this->kernel !== null) {
+        $kernel = WafuService::resolveKernel($this->kernel);
+        if ($kernel !== null) {
+            $pipeline = (array) ($kernel->getConfig()['pipeline'] ?? []);
+            if (empty($pipeline)) {
+                return $next($request);
+            }
+
             $headers = [];
             foreach ($request->headers->all() as $name => $values) {
                 $headers[strtolower($name)] = is_array($values) ? implode(', ', $values) : (string) $values;
@@ -69,14 +83,18 @@ class WafuFirewallMiddleware
                 foreach ($modules as $param) {
                     foreach (explode(',', $param) as $alias) {
                         $alias = trim($alias);
-                        if ($alias !== '') {
+                        if ($alias !== '' && WafuService::isModuleEnabled($alias)) {
                             $only[] = $alias;
                         }
                     }
                 }
+
+                if (empty($only)) {
+                    return $next($request);
+                }
             }
 
-            $result = $this->kernel->handleWithContext(
+            $result = $kernel->handleWithContext(
                 $request->server->all(),
                 WafuService::stripSensitiveForInspection($request->query->all()),
                 WafuService::stripSensitiveForInspection($request->request->all()),
@@ -119,6 +137,7 @@ class WafuFirewallMiddleware
             }
 
             $this->postResponseData = [
+                'kernel' => $kernel,
                 'context' => $context,
                 'only' => $only,
             ];
@@ -133,14 +152,19 @@ class WafuFirewallMiddleware
      */
     public function terminate(Request $request, Response $response): void
     {
-        if ($this->kernel === null || $this->postResponseData === null) {
+        if ($this->postResponseData === null) {
+            return;
+        }
+
+        $kernel = $this->postResponseData['kernel'] ?? $this->kernel;
+        if ($kernel === null) {
             return;
         }
 
         // Post-response handling for 404 abuse detection without slowing down client response
         if ($response->getStatusCode() === 404 && isset($this->postResponseData['context'])) {
             try {
-                $this->kernel->handleResponse(
+                $kernel->handleResponse(
                     $this->postResponseData['context'],
                     404,
                     $this->postResponseData['only'] ?? []

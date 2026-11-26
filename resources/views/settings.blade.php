@@ -1,113 +1,277 @@
 <form action="{{ route('wafu.settings.save') }}" method="POST" class="p-3">
     @csrf
 
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h5 class="border-bottom pb-2 text-dark fw-bold d-flex align-items-center">
-                <span class="badge bg-primary text-dark me-2 px-2 py-1"><i class="icon-sliders-h"></i></span>
-                {{ trans('lavero-admin-wafu::wafu.general_protection') }}
-            </h5>
-        </div>
+    <div class="alert alert-light border d-flex align-items-center justify-content-between py-2 px-3 mb-3 small text-muted">
+        <span><i class="icon-bolt text-warning me-2"></i>{{ trans('lavero-admin-wafu::wafu.cache_info_note') }}</span>
     </div>
 
-    <div class="row mb-3">
-        <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.master_switch') }}</label>
-        <div class="col-sm-9 d-flex align-items-center">
-            <div class="form-check form-switch fs-5">
-                <input class="form-check-input" type="checkbox" name="enabled" value="1" id="wafuEnabled" {{ !empty($settings['enabled']) ? 'checked' : '' }}>
-                <label class="form-check-label fs-6 ms-2" for="wafuEnabled">{{ trans('lavero-admin-wafu::wafu.enable_waf') }}</label>
+    <ul class="nav nav-tabs mb-4" id="wafuSettingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="wafu-general-tab" data-bs-toggle="tab" data-bs-target="#wafu-general-pane" type="button" role="tab">
+                <i class="icon-sliders-h me-1"></i> {{ trans('lavero-admin-wafu::wafu.tab_general') }}
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="wafu-modules-tab" data-bs-toggle="tab" data-bs-target="#wafu-modules-pane" type="button" role="tab">
+                <i class="icon-shield-alt me-1"></i> {{ trans('lavero-admin-wafu::wafu.tab_modules') }}
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="wafuSettingsTabsContent">
+        <div class="tab-pane fade show active" id="wafu-general-pane" role="tabpanel">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h5 class="border-bottom pb-2 text-dark fw-bold d-flex align-items-center">
+                        <span class="badge bg-primary text-dark me-2 px-2 py-1"><i class="icon-sliders-h"></i></span>
+                        {{ trans('lavero-admin-wafu::wafu.general_protection') }}
+                    </h5>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <div class="row mb-3">
-        <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.operating_mode') }}</label>
-        <div class="col-sm-9">
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="radio" name="mode" id="modeEnforce" value="enforce" {{ ($settings['mode'] ?? 'enforce') === 'enforce' ? 'checked' : '' }}>
-                <label class="form-check-label" for="modeEnforce">
-                    <span class="badge bg-danger me-1">{{ trans('lavero-admin-wafu::wafu.mode_enforce') }}</span> {{ trans('lavero-admin-wafu::wafu.mode_enforce_desc') }}
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="mode" id="modeReport" value="report" {{ ($settings['mode'] ?? '') === 'report' ? 'checked' : '' }}>
-                <label class="form-check-label" for="modeReport">
-                    <span class="badge bg-info text-dark me-1">{{ trans('lavero-admin-wafu::wafu.mode_report') }}</span> {{ trans('lavero-admin-wafu::wafu.mode_report_desc') }}
-                </label>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-3">
-        <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.trust_headers') }}</label>
-        <div class="col-sm-9 d-flex align-items-center">
-            <div class="form-check form-switch fs-5">
-                <input class="form-check-input" type="checkbox" name="trust_forwarded_headers" value="1" id="trustHeaders" {{ !empty($settings['trust_forwarded_headers']) ? 'checked' : '' }}>
-                <label class="form-check-label fs-6 ms-2" for="trustHeaders">{{ trans('lavero-admin-wafu::wafu.trust_headers_desc') }}</label>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.trusted_proxies') }}</label>
-        <div class="col-sm-9">
-            <textarea class="form-control" name="trusted_proxies" rows="3" placeholder="127.0.0.1&#10;10.0.0.0/8&#10;172.16.0.0/12">{{ $settings['trusted_proxies'] ?? '' }}</textarea>
-            <div class="form-text">{{ trans('lavero-admin-wafu::wafu.trusted_proxies_help') }}</div>
-        </div>
-    </div>
-
-    <div class="row mb-4 mt-4">
-        <div class="col-md-12">
-            <h5 class="border-bottom pb-2 text-dark fw-bold d-flex align-items-center">
-                <span class="badge bg-primary text-dark me-2 px-2 py-1"><i class="icon-shield-alt"></i></span>
-                {{ trans('lavero-admin-wafu::wafu.security_modules') }}
-            </h5>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        @foreach($modulesData as $key => $mod)
-            <div class="col-lg-6 col-12 mb-2">
-                <div class="card wafu-module-card h-100 shadow-sm border">
-                    <div class="card-body d-flex flex-column p-4">
-                        <div class="d-flex align-items-start justify-content-between mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="wafu-mod-icon-wrapper rounded-3 bg-{{ $mod['color'] }}-subtle text-{{ $mod['color'] }} p-2 me-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.25rem;">
-                                    <i class="{{ $mod['icon'] }}"></i>
-                                </div>
-                                <div>
-                                    <h6 class="card-title fw-bold mb-1 text-dark">{{ $mod['title'] }}</h6>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 0.725rem;">
-                                            {{ is_numeric($mod['pattern_count']) ? $mod['pattern_count'] . ' ' . trans('lavero-admin-wafu::wafu.rules') : $mod['pattern_count'] }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-check form-switch fs-4 ms-2 mb-0">
-                                <input class="form-check-input" type="checkbox" name="{{ $mod['setting_key'] }}" value="1" id="switch_{{ $key }}" {{ !empty($mod['enabled']) ? 'checked' : '' }}>
-                            </div>
-                        </div>
-
-                        <p class="card-text text-muted small flex-grow-1 mb-3" style="line-height: 1.55;">
-                            {{ $mod['description'] }}
-                        </p>
-
-                        <div class="d-flex align-items-center justify-content-between pt-3 border-top mt-auto">
-                            <div class="text-truncate me-2">
-                                <span class="badge bg-light text-dark border small" title="{{ implode(', ', $mod['targets']) }}">
-                                    <i class="icon-bullseye text-muted me-1"></i>{{ trans_choice('lavero-admin-wafu::wafu.targets_scope', count($mod['targets']), ['count' => count($mod['targets'])]) }}
-                                </span>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary px-3 py-1 wafu-view-rules-btn d-inline-flex align-items-center" data-module="{{ $key }}">
-                                <i class="icon-code me-1 text-primary"></i>
-                                <span>{{ trans('lavero-admin-wafu::wafu.rules') }}</span>
-                            </button>
-                        </div>
+            <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.master_switch') }}</label>
+                <div class="col-sm-9 d-flex align-items-center">
+                    <div class="form-check form-switch fs-5">
+                        <input class="form-check-input" type="checkbox" name="enabled" value="1" id="wafuEnabled" {{ !empty($settings['enabled']) ? 'checked' : '' }}>
+                        <label class="form-check-label fs-6 ms-2" for="wafuEnabled">{{ trans('lavero-admin-wafu::wafu.enable_waf') }}</label>
                     </div>
                 </div>
             </div>
-        @endforeach
+
+            <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.operating_mode') }}</label>
+                <div class="col-sm-9">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="mode" id="modeEnforce" value="enforce" {{ ($settings['mode'] ?? 'enforce') === 'enforce' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="modeEnforce">
+                            <span class="badge bg-danger me-1">{{ trans('lavero-admin-wafu::wafu.mode_enforce') }}</span> {{ trans('lavero-admin-wafu::wafu.mode_enforce_desc') }}
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" id="modeReport" value="report" {{ ($settings['mode'] ?? '') === 'report' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="modeReport">
+                            <span class="badge bg-info text-dark me-1">{{ trans('lavero-admin-wafu::wafu.mode_report') }}</span> {{ trans('lavero-admin-wafu::wafu.mode_report_desc') }}
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.trust_headers') }}</label>
+                <div class="col-sm-9 d-flex align-items-center">
+                    <div class="form-check form-switch fs-5">
+                        <input class="form-check-input" type="checkbox" name="trust_forwarded_headers" value="1" id="trustHeaders" {{ !empty($settings['trust_forwarded_headers']) ? 'checked' : '' }}>
+                        <label class="form-check-label fs-6 ms-2" for="trustHeaders">{{ trans('lavero-admin-wafu::wafu.trust_headers_desc') }}</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.trusted_proxies') }}</label>
+                <div class="col-sm-9">
+                    <textarea class="form-control font-monospace small" name="trusted_proxies" rows="3" placeholder="127.0.0.1&#10;10.0.0.0/8&#10;172.16.0.0/12">{{ $settings['trusted_proxies'] ?? '' }}</textarea>
+                    <div class="form-text">{{ trans('lavero-admin-wafu::wafu.trusted_proxies_help') }}</div>
+                </div>
+            </div>
+
+            <div class="row mb-4 mt-4">
+                <div class="col-md-12">
+                    <h5 class="border-bottom pb-2 text-dark fw-bold d-flex align-items-center">
+                        <span class="badge bg-primary text-dark me-2 px-2 py-1"><i class="icon-filter"></i></span>
+                        {{ trans('lavero-admin-wafu::wafu.exclusions_title') }}
+                    </h5>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.whitelisted_ips') }}</label>
+                <div class="col-sm-9">
+                    <textarea class="form-control font-monospace small" name="whitelisted_ips" rows="3" placeholder="127.0.0.1&#10;192.168.1.0/24">{{ $settings['whitelisted_ips'] ?? '' }}</textarea>
+                    <div class="form-text">{{ trans('lavero-admin-wafu::wafu.whitelisted_ips_help') }}</div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.excluded_routes') }}</label>
+                <div class="col-sm-9">
+                    <textarea class="form-control font-monospace small" name="excluded_routes" rows="3" placeholder="cp25*&#10;api/webhooks/*&#10;/login">{{ $settings['excluded_routes'] ?? '' }}</textarea>
+                    <div class="form-text">{{ trans('lavero-admin-wafu::wafu.excluded_routes_help') }}</div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.ignored_fields') }}</label>
+                <div class="col-sm-9">
+                    <textarea class="form-control font-monospace small" name="ignored_fields" rows="2" placeholder="content, html, description">{{ $settings['ignored_fields'] ?? '' }}</textarea>
+                    <div class="form-text">{{ trans('lavero-admin-wafu::wafu.ignored_fields_help') }}</div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label class="col-sm-3 col-form-label fw-bold">{{ trans('lavero-admin-wafu::wafu.sensitive_fields') }}</label>
+                <div class="col-sm-9">
+                    <textarea class="form-control font-monospace small" name="sensitive_fields" rows="2" placeholder="pin, secret_code">{{ $settings['sensitive_fields'] ?? '' }}</textarea>
+                    <div class="form-text">{{ trans('lavero-admin-wafu::wafu.sensitive_fields_help') }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="wafu-modules-pane" role="tabpanel">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h5 class="border-bottom pb-2 text-dark fw-bold d-flex align-items-center">
+                        <span class="badge bg-primary text-dark me-2 px-2 py-1"><i class="icon-shield-alt"></i></span>
+                        {{ trans('lavero-admin-wafu::wafu.security_modules') }}
+                    </h5>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                @foreach($modulesData as $key => $mod)
+                    @php
+                        $isPatternMod = in_array($key, ['sql_injection', 'xss', 'rce', 'lfi', 'path_traversal', 'bad_bots'], true);
+                        $hasTargets = in_array($key, ['sql_injection', 'xss', 'rce', 'lfi', 'path_traversal'], true);
+                        $isConfigurable = $isPatternMod || in_array($key, ['rate_limit', 'not_found_abuse'], true);
+                    @endphp
+                    <div class="col-lg-6 col-12 mb-2">
+                        <div class="card wafu-module-card h-100 shadow-sm border">
+                            <div class="card-body d-flex flex-column p-4">
+                                <div class="d-flex align-items-start justify-content-between mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="wafu-mod-icon-wrapper rounded-3 bg-{{ $mod['color'] }}-subtle text-{{ $mod['color'] }} p-2 me-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                                            <i class="{{ $mod['icon'] }}"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="card-title fw-bold mb-1 text-dark">{{ $mod['title'] }}</h6>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 0.725rem;">
+                                                    {{ is_numeric($mod['pattern_count']) ? $mod['pattern_count'] . ' ' . trans('lavero-admin-wafu::wafu.rules') : $mod['pattern_count'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-check form-switch fs-4 ms-2 mb-0">
+                                        <input class="form-check-input" type="checkbox" name="{{ $mod['setting_key'] }}" value="1" id="switch_{{ $key }}" {{ !empty($mod['enabled']) ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+
+                                <p class="card-text text-muted small flex-grow-1 mb-3" style="line-height: 1.55;">
+                                    {{ $mod['description'] }}
+                                </p>
+
+                                @if($isConfigurable)
+                                    <div class="collapse mb-3" id="config_{{ $key }}">
+                                        <div class="p-3 rounded-3 bg-light border small">
+                                            @if($isPatternMod)
+                                                <div class="mb-2">
+                                                    <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.module_action') }}</label>
+                                                    <select name="mod_{{ $key }}_action" class="form-select form-select-sm">
+                                                        <option value="block" {{ ($settings["mod_{$key}_action"] ?? 'block') === 'block' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_block') }}</option>
+                                                        <option value="challenge" {{ ($settings["mod_{$key}_action"] ?? '') === 'challenge' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_challenge') }}</option>
+                                                        <option value="log" {{ ($settings["mod_{$key}_action"] ?? '') === 'log' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_log') }}</option>
+                                                    </select>
+                                                </div>
+
+                                                @if($hasTargets)
+                                                    <div class="mb-2">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.inspection_targets') }}</label>
+                                                        <div class="d-flex flex-wrap gap-2">
+                                                            @foreach(['query', 'body', 'cookies', 'uri', 'headers'] as $target)
+                                                                <div class="form-check form-check-inline m-0">
+                                                                    <input class="form-check-input" type="checkbox" name="mod_{{ $key }}_targets[]" value="{{ $target }}" id="target_{{ $key }}_{{ $target }}" {{ in_array($target, (array) ($settings["mod_{$key}_targets"] ?? []), true) ? 'checked' : '' }}>
+                                                                    <label class="form-check-label font-monospace" for="target_{{ $key }}_{{ $target }}">{{ $target }}</label>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                @endif
+
+                                                <div>
+                                                    <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.custom_patterns') }}</label>
+                                                    <textarea name="mod_{{ $key }}_custom_patterns" class="form-control form-control-sm font-monospace" rows="2" placeholder="/custom_rule/i">{{ $settings["mod_{$key}_custom_patterns"] ?? '' }}</textarea>
+                                                    <div class="form-text" style="font-size: 0.72rem;">{{ trans('lavero-admin-wafu::wafu.custom_patterns_help') }}</div>
+                                                </div>
+                                            @elseif($key === 'rate_limit')
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.rate_limit_max') }}</label>
+                                                        <input type="number" min="1" name="rate_limit_limit" class="form-control form-control-sm" value="{{ $settings['rate_limit_limit'] ?? 120 }}">
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.interval_seconds') }}</label>
+                                                        <input type="number" min="1" name="rate_limit_interval" class="form-control form-control-sm" value="{{ $settings['rate_limit_interval'] ?? 60 }}">
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.key_by') }}</label>
+                                                        <select name="rate_limit_key_by" class="form-select form-select-sm">
+                                                            <option value="ip" {{ ($settings['rate_limit_key_by'] ?? 'ip') === 'ip' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.key_by_ip') }}</option>
+                                                            <option value="ip+uri" {{ ($settings['rate_limit_key_by'] ?? '') === 'ip+uri' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.key_by_ip_uri') }}</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.module_action') }}</label>
+                                                        <select name="rate_limit_action" class="form-select form-select-sm">
+                                                            <option value="challenge" {{ ($settings['rate_limit_action'] ?? 'challenge') === 'challenge' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_challenge') }}</option>
+                                                            <option value="block" {{ ($settings['rate_limit_action'] ?? '') === 'block' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_block') }}</option>
+                                                            <option value="log" {{ ($settings['rate_limit_action'] ?? '') === 'log' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_log') }}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            @elseif($key === 'not_found_abuse')
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.not_found_max') }}</label>
+                                                        <input type="number" min="1" name="not_found_threshold" class="form-control form-control-sm" value="{{ $settings['not_found_threshold'] ?? 20 }}">
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.interval_seconds') }}</label>
+                                                        <input type="number" min="1" name="not_found_interval" class="form-control form-control-sm" value="{{ $settings['not_found_interval'] ?? 300 }}">
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.key_by') }}</label>
+                                                        <select name="not_found_key_by" class="form-select form-select-sm">
+                                                            <option value="ip" {{ ($settings['not_found_key_by'] ?? 'ip') === 'ip' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.key_by_ip') }}</option>
+                                                            <option value="ip+uri" {{ ($settings['not_found_key_by'] ?? '') === 'ip+uri' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.key_by_ip_uri') }}</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label fw-semibold mb-1">{{ trans('lavero-admin-wafu::wafu.module_action') }}</label>
+                                                        <select name="not_found_action" class="form-select form-select-sm">
+                                                            <option value="block" {{ ($settings['not_found_action'] ?? 'block') === 'block' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_block') }}</option>
+                                                            <option value="challenge" {{ ($settings['not_found_action'] ?? '') === 'challenge' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_challenge') }}</option>
+                                                            <option value="log" {{ ($settings['not_found_action'] ?? '') === 'log' ? 'selected' : '' }}>{{ trans('lavero-admin-wafu::wafu.action_log') }}</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <div class="d-flex align-items-center justify-content-between pt-3 border-top mt-auto gap-2">
+                                    <div class="text-truncate me-auto">
+                                        <span class="badge bg-light text-dark border small" title="{{ implode(', ', $mod['targets']) }}">
+                                            <i class="icon-bullseye text-muted me-1"></i>{{ trans_choice('lavero-admin-wafu::wafu.targets_scope', count($mod['targets']), ['count' => count($mod['targets'])]) }}
+                                        </span>
+                                    </div>
+                                    @if($isConfigurable)
+                                        <button type="button" class="btn btn-sm btn-outline-primary px-2 py-1 d-inline-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#config_{{ $key }}" aria-expanded="false">
+                                            <i class="icon-sliders-h me-1"></i>
+                                            <span>{{ trans('lavero-admin-wafu::wafu.configure_rules') }}</span>
+                                        </button>
+                                    @endif
+                                    <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1 wafu-view-rules-btn d-inline-flex align-items-center" data-module="{{ $key }}">
+                                        <i class="icon-code me-1 text-primary"></i>
+                                        <span>{{ trans('lavero-admin-wafu::wafu.rules') }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
     </div>
 
     <div class="d-flex justify-content-end mt-4 pt-3 border-top">
